@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fluid Builder</title>
+  <link rel="stylesheet" href="fluidbuilder.webflow.shared.ebccc1907.css">
+  <link rel="stylesheet" href="codemirror.min.css">
+  <style>
+    /* ── CodeMirror overrides ─────────────────────────────── */
+    .CodeMirror { height: 100% !important; color: inherit; }
+    .CodeMirror-selected,
+    .CodeMirror-line::selection,
+    .CodeMirror-line > span::selection,
+    .CodeMirror-line > span > span::selection,
+    .CodeMirror-line::-moz-selection,
+    .CodeMirror-line > span::-moz-selection,
+    .CodeMirror-line > span > span::-moz-selection { background: var(--swatch--brand); }
+    .CodeMirror-gutters { background-color: transparent; border: 0; }
+    .CodeMirror-sizer { min-height: 30.5rem !important; max-height: 30.5rem; }
+
+    /* ── Template hidden ──────────────────────────────────── */
+    .template_wrap { display: none; }
+
+    /* ── Warning icon tooltip ─────────────────────────────── */
+    [data-warning] [data-tooltip] {
+      opacity: 0;
+      pointer-events: none;
+      transform: rotate(90deg) scale(0.9);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .accessibility-warning [data-warning] [data-tooltip] {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    [data-tooltip] { position: relative; cursor: default; }
+    [data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--swatch--dark);
+      color: var(--swatch--light);
+      padding: 0.4rem 0.7rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      white-space: normal;
+      max-width: 240px;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    /* ── Scale groups — dim auto-calculated rows ──────────── */
+    [data-group-scale="true"] [data-item]:not(.is-main) .g_field_wrap:has(input[type="number"]),
+    .g_group_wrap:has(.g_group_list:empty) .g_field_wrap { opacity: 0.7; }
+    [data-group-scale="true"] [data-item]:not(.is-main) .g_field_wrap:has(input[type="number"]) .g_field_base_inner {
+      background-color: var(--theme--background);
+    }
+
+    /* ── Accessibility warning: secondary (shrinks) variant ─ */
+    .is-secondary .g_field_base_inner { background-color: var(--theme--background) !important; }
+
+    /* ── Fallback toggle ──────────────────────────────────── */
+    .fallback_wrap.is-active .fallback_check {
+      background-color: var(--swatch--dark);
+      color: var(--swatch--light);
+    }
+    .fallback_wrap.is-active .fallback_check > * { opacity: 1; }
+
+    /* ── Hide group when its list is empty ────────────────── */
+    .g_group_layout:has(.g_group_list:empty) { display: none; }
+
+    /* ── Sortable cursor ──────────────────────────────────── */
+    .ui-sortable-handle { cursor: grab; }
+    .ui-sortable-handle:active { cursor: grabbing; }
+  </style>
+</head>
+<body>
+
+<section class="builder_wrap">
+  <div class="builder_contain u-container">
+    <div id="general" class="general">
+
+      <!-- ── Header & nav ───────────────────────────────────── -->
+      <div class="builder_top_wrap">
+        <div class="builder_logo_wrap">
+          <!-- Logo: inline SVG text so no external file needed -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 420 56" fill="none" class="builder_logo_svg" aria-label="Fluid Builder">
+            <text x="0" y="44" font-family="system-ui, sans-serif" font-size="44" font-weight="800" letter-spacing="-1" fill="currentColor">Fluid Builder</text>
+          </svg>
+        </div>
+
+        <div class="builder_header_layout">
+          <h1 class="builder_header_title">Fluid Builder</h1>
+
+          <div class="nav_wrap">
+            <div class="nav_contain u-container">
+              <div class="nav_menu_wrap">
+
+                <!-- Section anchor links -->
+                <a href="#general" class="nav_link_wrap w-inline-block">
+                  <div class="nav_link_text">General</div>
+                </a>
+                <a href="#heading-variables" class="nav_link_wrap w-inline-block">
+                  <div class="nav_link_text">Headings</div>
+                </a>
+                <a href="#text-variables" class="nav_link_wrap w-inline-block">
+                  <div class="nav_link_text">Paragraphs</div>
+                </a>
+                <a href="#spacing-variables" class="nav_link_wrap w-inline-block">
+                  <div class="nav_link_text">Spacing</div>
+                </a>
+
+                <!-- Action buttons -->
+                <a data-reset="" href="#" class="nav_btn_wrap w-inline-block">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5"/></svg>
+                  <span class="btn_text">Reset Values</span>
+                </a>
+
+                <a data-share="" href="#" class="nav_btn_wrap w-inline-block">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  <span class="btn_text">Share URL</span>
+                </a>
+
+                <a data-copy="" href="#" class="nav_btn_wrap w-inline-block">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <span class="btn_text">Copy Code</span>
+                </a>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /builder_top_wrap -->
+
+      <!-- ── Global settings (breakpoints) ──────────────────── -->
+      <div class="builder_top_layout u-grid-custom is-first">
+
+        <div class="g_label_wrap">
+          <div class="g_label_content"><div class="g_label_title">Figma Design Width</div></div>
+          <div class="g_field_wrap">
+            <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+            <input type="number" min="0" placeholder="" data-field="container-max" step="1" class="g_field_element">
+            <div class="g_field_label">REM</div>
+            <div class="g_field_group"></div>
+          </div>
+        </div>
+
+        <div class="g_label_wrap">
+          <div class="g_label_content"><div class="g_label_title">Desktop Max Width</div></div>
+          <div class="g_field_wrap">
+            <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+            <input type="number" min="0" placeholder="" data-field="content-max" step="1" class="g_field_element">
+            <div class="g_field_label">REM</div>
+            <div class="g_field_group"></div>
+          </div>
+        </div>
+
+        <div class="g_label_wrap">
+          <div class="g_label_content"><div class="g_label_title">Mobile Min Width</div></div>
+          <div class="g_field_wrap">
+            <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+            <input type="number" min="0" placeholder="" data-field="content-min" step="1" class="g_field_element">
+            <div class="g_field_label">REM</div>
+            <div class="g_field_group"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           GROUP 0 — General Variables (no type scale)
+      ═══════════════════════════════════════════════════════ -->
+      <div id="general-variables" data-group="wrap" class="g_group_wrap">
+        <h2 class="g_group_title">General Variables</h2>
+        <div class="g_group_layout">
+          <div class="g_group_top u-grid-custom">
+            <div class="g_label_wrap"><div class="g_label_content"><div class="g_label_title">Variable Name</div></div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Desktop Size</div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Mobile Size</div></div>
+          </div>
+          <div data-group="list" class="g_group_list"></div>
+        </div>
+        <div class="g_group_btn_wrap">
+          <div data-add-variable="" data-button="wrap" class="g_group_btn_element">
+            <div data-button="circle" class="g_group_btn_circle">
+              <div class="g_group_btn_line is-1"></div>
+              <div class="g_group_btn_line is-2"></div>
+            </div>
+            <div class="g_group_btn_text">Add Variable</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           GROUP 1 — Heading Variables (with type scale)
+      ═══════════════════════════════════════════════════════ -->
+      <div id="heading-variables" data-group="wrap" data-group-scale="true" class="g_group_wrap">
+        <div class="builder_top_layout u-grid-custom is-first">
+          <h2 class="g_group_title is-alt">Heading Variables</h2>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Desktop Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="max-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Mobile Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="min-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+        </div>
+        <div class="g_group_layout">
+          <div class="g_group_top u-grid-custom">
+            <div class="g_label_wrap"><div class="g_label_content"><div class="g_label_title">Variable Name</div></div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Desktop Size</div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Mobile Size</div></div>
+          </div>
+          <div data-group="list" class="g_group_list"></div>
+        </div>
+        <div class="g_group_btn_wrap">
+          <div data-add-variable="" data-button="wrap" class="g_group_btn_element">
+            <div data-button="circle" class="g_group_btn_circle">
+              <div class="g_group_btn_line is-1"></div>
+              <div class="g_group_btn_line is-2"></div>
+            </div>
+            <div class="g_group_btn_text">Add Variable</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           GROUP 2 — Paragraph / Text Variables (with type scale)
+      ═══════════════════════════════════════════════════════ -->
+      <div id="text-variables" data-group="wrap" data-group-scale="true" class="g_group_wrap">
+        <div class="builder_top_layout u-grid-custom is-first">
+          <h2 class="g_group_title is-alt">Paragraph Variables</h2>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Desktop Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="max-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Mobile Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="min-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+        </div>
+        <div class="g_group_layout">
+          <div class="g_group_top u-grid-custom">
+            <div class="g_label_wrap"><div class="g_label_content"><div class="g_label_title">Variable Name</div></div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Desktop Size</div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Mobile Size</div></div>
+          </div>
+          <div data-group="list" class="g_group_list"></div>
+        </div>
+        <div class="g_group_btn_wrap">
+          <div data-add-variable="" data-button="wrap" class="g_group_btn_element">
+            <div data-button="circle" class="g_group_btn_circle">
+              <div class="g_group_btn_line is-1"></div>
+              <div class="g_group_btn_line is-2"></div>
+            </div>
+            <div class="g_group_btn_text">Add Variable</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           GROUP 3 — Spacing Variables (with type scale)
+      ═══════════════════════════════════════════════════════ -->
+      <div id="spacing-variables" data-group="wrap" data-group-scale="true" class="g_group_wrap">
+        <div class="builder_top_layout u-grid-custom is-first">
+          <h2 class="g_group_title is-alt">Spacing Variables</h2>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Desktop Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="max-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+          <div class="g_label_wrap">
+            <div class="g_label_title">Mobile Scale Ratio</div>
+            <div class="g_field_wrap">
+              <div class="g_field_base"><div data-bar="" class="g_field_base_inner"></div></div>
+              <input type="number" min="1.01" placeholder="" data-field="min-scale" step="0.01" class="g_field_element">
+              <div class="g_field_group"></div>
+            </div>
+          </div>
+        </div>
+        <div class="g_group_layout">
+          <div class="g_group_top u-grid-custom">
+            <div class="g_label_wrap"><div class="g_label_content"><div class="g_label_title">Variable Name</div></div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Desktop Size</div></div>
+            <div class="g_label_wrap"><div class="g_label_title">Mobile Size</div></div>
+          </div>
+          <div data-group="list" class="g_group_list"></div>
+        </div>
+        <div class="g_group_btn_wrap">
+          <div data-add-variable="" data-button="wrap" class="g_group_btn_element">
+            <div data-button="circle" class="g_group_btn_circle">
+              <div class="g_group_btn_line is-1"></div>
+              <div class="g_group_btn_line is-2"></div>
+            </div>
+            <div class="g_group_btn_text">Add Variable</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Browser fallback toggle ─────────────────────────── -->
+      <div class="fallback_wrap is-active">
+        <div class="fallback_check">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="fallback_text">Include browser fallback CSS</div>
+      </div>
+
+      <!-- ── Generated CSS output (CodeMirror) ──────────────── -->
+      <div class="editor_wrap">
+        <textarea id="editor"></textarea>
+      </div>
+
+    </div><!-- /general -->
+  </div><!-- /builder_contain -->
+</section>
+
+<!-- ── Hidden variable item template ──────────────────────────────
+     Cloned by JS for each variable row. Must stay hidden.
+─────────────────────────────────────────────────────────────────── -->
+<div class="template_wrap">
+  <div data-template="true" data-item="" class="g_item_wrap u-grid-custom">
+
+    <!-- Col 1: name + warning + delete -->
+    <div class="g_item_column">
+      <div class="g_field_wrap">
+        <div class="g_field_base">
+          <div data-bar="" class="g_field_base_inner"></div>
+        </div>
+        <input type="text" placeholder="--variable-name" data-field="variable-name" class="g_field_element">
+        <div class="g_field_group">
+
+          <button data-warning=" " class="g_field_warning" type="button" tabindex="-1">
+            <div class="g_field_warning_icon" data-tooltip="Accessibility Warning: Max size exceeds 2.5× the min size. This may cause issues when users zoom. Consider adjusting your values.">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <a href="https://www.smashingmagazine.com/2023/11/addressing-accessibility-concerns-fluid-type/#conclusion"
+               target="_blank" rel="noopener" class="g_field_warning_link w-inline-block" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </button>
+
+          <button data-delete=" " class="g_field_delete_wrap" type="button">
+            <div class="g_field_delete_line is-1"></div>
+            <div class="g_field_delete_line is-2"></div>
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: Desktop (max) -->
+    <div class="g_item_column">
+      <div class="g_field_wrap">
+        <div class="g_field_base">
+          <div data-bar="max" class="g_field_base_inner"></div>
+        </div>
+        <input type="number" min="0" placeholder="0" data-field="max" step="0.25" class="g_field_element">
+        <div class="g_field_label">REM</div>
+        <div class="g_field_group"></div>
+      </div>
+    </div>
+
+    <!-- Col 3: Mobile (min) -->
+    <div class="g_item_column">
+      <div class="g_field_wrap">
+        <div class="g_field_base">
+          <div data-bar="min" class="g_field_base_inner"></div>
+        </div>
+        <input type="number" min="0" placeholder="0" data-field="min" step="0.25" class="g_field_element">
+        <div class="g_field_label">REM</div>
+        <div class="g_field_group"></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /template_wrap -->
+
+<!-- Scripts (local copies from _files folder) -->
+<script src="jquery-3.5.1.min.dc5e7f18c8.js.download"></script>
+<script src="jquery-ui.js.download"></script>
+<script src="codemirror.min.js.download"></script>
+<script src="htmlmixed.min.js.download"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
